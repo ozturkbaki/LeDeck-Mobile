@@ -1,0 +1,24 @@
+{
+    "name": "ledeck-mobile",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "cap:add": "npx cap add android",
+        "cap:sync": "npx cap sync",
+        "cap:open": "npx cap open android"
+    },
+    "devDependencies": {
+        "@capacitor/android": "^6.0.0",
+        "@capacitor/cli": "^6.0.0",
+        "@capacitor/core": "^6.0.0",
+        "vite": "^5.0.0"
+    },
+    "dependencies": {
+        "capacitor-udp-socket": "^6.0.0",
+        "capacitor-tcp-socket": "^6.0.0"
+    }
+}

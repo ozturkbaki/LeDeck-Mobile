@@ -1,0 +1,72 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.4.2'
+        classpath 'com.google.gms:google-services:4.4.0'
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    // Exclude desktop.ini from all Android subprojects to prevent build failures on Windows.
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                sourceSets.all { sourceSet ->
+                    sourceSet.res.exclude '**/desktop.ini'
+                    sourceSet.assets.exclude '**/desktop.ini'
+                }
+                // Also ignore in aapt options for extra safety
+                aaptOptions {
+                    // Removed '!' from desktop.ini and others to ensure they are ignored
+                    ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:thumbs.db:picasa.ini:desktop.ini:*~'
+                }
+            }
+            // Automatically run fixDesktopIni before building
+            project.tasks.matching { it.name == 'preBuild' }.all {
+                dependsOn rootProject.tasks.findByName('fixDesktopIni')
+            }
+        }
+    }
+}
+
+// Helper task to delete all desktop.ini files in the project and node_modules
+task fixDesktopIni {
+    doLast {
+        def count = 0
+        fileTree(dir: '..', include: '**/desktop.ini').each { File file ->
+            if (file.delete()) {
+                count++
+            }
+        }
+        if (count > 0) {
+            println "Deleted ${count} desktop.ini files."
+        }
+    }
+}
+
+task clean(type: Delete) {
+    // Windows-safe clean: delete reports subdirs first to avoid locked file errors
+    doFirst {
+        def buildDir = rootProject.buildDir
+        if (buildDir.exists()) {
+            // Delete reports/problems dir first (most commonly locked on Windows)
+            def reportsDir = new File(buildDir, "reports")
+            if (reportsDir.exists()) {
+                reportsDir.deleteDir()
+            }
+        }
+    }
+    delete rootProject.buildDir
+}

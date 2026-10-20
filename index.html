@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LeDeck Mobile</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div id="app">
+        <header>
+            <div class="header-info">
+                <h1>LeDeck Control</h1>
+                <div id="connectionStatus" class="status-badge disconnected">Cihaz Bağlı Değil</div>
+                <div id="activeDeviceInfo" class="active-device-info" style="display: none;">
+                    <span id="connectedDeviceName">Cihaz</span>
+                    <button id="btnDisconnect" class="btn-disconnect-small">Ayrıl</button>
+                </div>
+            </div>
+        </header>
+
+        <main id="mainContent">
+            <!-- Sayfa 1: Keşif (Discovery) -->
+            <div id="page-discovery" class="page active">
+                <div class="header-section">
+                    <h2>Cihaz Keşfet</h2>
+                    <p>Ağdaki LED kontrol cihazlarını tarayın veya IP ile bağlanın.</p>
+                </div>
+
+                <div class="action-bar">
+                    <div class="scan-options">
+                        <select id="seriesSelect" class="input-modern select-modern">
+                            <option value="all">Tümü</option>
+                            <option value="TU">TU Serisi</option>
+                            <option value="VX">VXPro</option>
+                            <option value="H">H Serisi</option>
+                        </select>
+                    </div>
+                    <div class="manual-scan-box">
+                        <input type="text" id="manualIp" placeholder="Örn: 192.168.1.100" class="input-modern">
+                        <button id="btnManualScan" class="btn-secondary">IP İle Ara</button>
+                    </div>
+                    <button id="btnScan" class="btn-primary">Ağda Ara</button>
+                </div>
+
+                <div id="scanProgressContainer" class="scan-progress-container" style="display: none;">
+                    <div class="progress-info">
+                        <span id="scanStatusText">Ağ taranıyor...</span>
+                        <span id="scanPercentage">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div id="scanProgressBar" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div id="deviceList" class="device-grid">
+                    <div class="empty-state">Henüz bir arama yapılmadı.</div>
+                </div>
+            </div>
+
+            <!-- Sayfa 2: Kontrol (Control) -->
+            <div id="page-control" class="page">
+                <!-- Kontrol Ana Menü -->
+                <div id="control-home">
+                    <div class="header-section">
+                        <h2>Kontrol Paneli</h2>
+                        <p id="connectedDeviceSubtitle">Lütfen bir cihaza bağlanın.</p>
+                    </div>
+
+                    <div id="controlPanel" class="control-panel locked">
+                        <!-- VX Serisi Kontrol Kartları -->
+                        <div class="control-grid" id="vxControlGrid">
+                            <!-- Parlaklık Kartı (Giriş) -->
+                            <div class="control-entry-card" id="cardBrightness">
+                                <span class="icon">☀️</span>
+                                <span class="label">Parlaklık</span>
+                                <span class="chevron">˃</span>
+                            </div>
+                            <!-- Preset Kartı (Giriş) -->
+                            <div class="control-entry-card" id="cardPresets">
+                                <span class="icon">💾</span>
+                                <span class="label">Presets</span>
+                                <span class="chevron">˃</span>
+                            </div>
+                            <!-- Blackout Kartı (Toggle) -->
+                            <div class="control-entry-card" id="cardBlackout">
+                                <span class="icon">🌑</span>
+                                <span class="label">Hızlı Karartma</span>
+                                <span class="status-dot"></span>
+                            </div>
+                            <!-- Freeze Kartı (Toggle) -->
+                            <div class="control-entry-card" id="cardFreeze">
+                                <span class="icon">❄️</span>
+                                <span class="label">Görüntüyü Dondur</span>
+                                <span class="status-dot"></span>
+                            </div>
+                        </div>
+
+                        <!-- TU Serisi Kontrol Kartlar\u0131 -->
+                        <div class="control-grid" id="tuControlGrid" style="display:none;">
+                            <!-- Parlakl\u0131k (Giri\u015f) -->
+                            <div class="control-entry-card" id="cardTuBrightness">
+                                <span class="icon">&#x2600;&#xfe0f;</span>
+                                <span class="label">Parlakl&#x131;k</span>
+                                <span class="chevron">&#x2c3;</span>
+                            </div>
+                            <!-- Ekran A&#x131;/Kapat (Toggle) -->
+                            <div class="control-entry-card" id="cardScreenToggle">
+                                <span class="icon">&#x1f4fa;</span>
+                                <span class="label">Ekran&#x131; A&#xe7; / Kapat</span>
+                                <span class="status-dot"></span>
+                            </div>
+                            <!-- Aktif Kaynak (Giriş) -->
+                            <div class="control-entry-card" id="cardHdmiSource">
+                                <span class="icon">&#x1f50c;</span>
+                                <span class="label">Aktif Kaynak</span>
+                                <span class="chevron">&#x2c3;</span>
+                            </div>
+                            <!-- G&#xfc;&#xe7; Kontrol&#xfc; (Giri&#x15f;) -->
+                            <div class="control-entry-card" id="cardPower">
+                                <span class="icon">&#x23fb;</span>
+                                <span class="label">G&#xfc;&#xe7; Kontrol&#xfc;</span>
+                                <span class="chevron">&#x2c3;</span>
+                            </div>
+                            <!-- Ses Kontrol&#xfc; (Giri&#x15f;) -->
+                            <div class="control-entry-card" id="cardVolume">
+                                <span class="icon">&#x1f50a;</span>
+                                <span class="label">Ses Kontrol&#xfc;</span>
+                                <span class="chevron">&#x2c3;</span>
+                            </div>
+                            <!-- Uzaktan Kumanda (Giri&#x15f;) -->
+                            <div class="control-entry-card" id="cardRemote">
+                                <span class="icon">&#x1f4f1;</span>
+                                <span class="label">Uzaktan Kumanda</span>
+                                <span class="chevron">&#x2c3;</span>
+                            </div>
+                        </div>
+
+                        <!-- H Serisi Kontrol Kartları -->
+                        <div class="control-grid" id="hControlGrid" style="display:none;">
+                            <!-- Parlaklık (Giriş) -->
+                            <div class="control-entry-card" id="cardHBrightness">
+                                <span class="icon">☀️</span>
+                                <span class="label">Parlaklık</span>
+                                <span class="chevron">˃</span>
+                            </div>
+                            <!-- FTB - Fade to Black (Toggle) -->
+                            <div class="control-entry-card" id="cardHFtb">
+                                <span class="icon">🌑</span>
+                                <span class="label">Hızlı Karartma (FTB)</span>
+                                <span class="status-dot"></span>
+                            </div>
+                            <!-- Freeze Screen (Toggle) W040A -->
+                            <div class="control-entry-card" id="cardHFreeze">
+                                <span class="icon">❄️</span>
+                                <span class="label">Görüntüyü Dondur</span>
+                                <span class="status-dot"></span>
+                            </div>
+                            <!-- Preset (Giriş) -->
+                            <div class="control-entry-card" id="cardHPresets">
+                                <span class="icon">💾</span>
+                                <span class="label">Presets</span>
+                                <span class="chevron">˃</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="control-detail-brightness" class="control-subpage">
+                    <button id="btnBackToControl" class="btn-back">⬅ Geri</button>
+                    <div class="header-section">
+                        <h2>Parlaklık Ayarı</h2>
+                        <p>Ekran parlaklığını 0-255 arası belirleyin.</p>
+                    </div>
+
+                    <div class="detail-card">
+                        <div id="brightnessValue" class="value-display">0</div>
+                        <input type="range" id="brightnessSlider" min="0" max="255" value="0" class="slider-large">
+                        <div class="slider-info">
+                            <span>0</span>
+                            <span>255</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- H Serisi Parlaklık Detay Sayfası -->
+                <div id="control-detail-h-brightness" class="control-subpage" style="display:none;">
+                    <button id="btnBackFromHBrightness" class="btn-back">⬅ Geri</button>
+                    <div class="header-section">
+                        <h2>H Serisi Parlaklık</h2>
+                        <p>Ekran parlaklığını 0-100 arası belirleyin.</p>
+                    </div>
+                    <div class="detail-card">
+                        <div id="hBrightnessValue" class="value-display">50</div>
+                        <input type="range" id="hBrightnessSlider" min="0" max="100" value="50" class="slider-large">
+                        <div class="slider-info">
+                            <span>0</span>
+                            <span>100</span>
+                        </div>
+                        <button id="btnApplyHBrightness" class="btn-primary" style="width:auto; padding: 14px 32px;">✓ Uygula</button>
+                    </div>
+                </div>
+
+                <!-- VX Serisi Preset Detay Sayfası -->
+                <div id="control-detail-vx-presets" class="control-subpage">
+                    <button id="btnBackToControlFromPresets" class="btn-back">⬅ Geri</button>
+                    <div class="header-section">
+                        <h2>Presets</h2>
+                        <p>Yüklemek için bir preset seçin. İsim değiştirmek için basılı tutun.</p>
+                    </div>
+                    <div class="preset-grid" id="presetButtons">
+                        <button class="btn-preset" data-index="0">Preset 1</button>
+                        <button class="btn-preset" data-index="1">Preset 2</button>
+                        <button class="btn-preset" data-index="2">Preset 3</button>
+                        <button class="btn-preset" data-index="3">Preset 4</button>
+                        <button class="btn-preset" data-index="4">Preset 5</button>
+                        <button class="btn-preset" data-index="5">Preset 6</button>
+                        <button class="btn-preset" data-index="6">Preset 7</button>
+                        <button class="btn-preset" data-index="7">Preset 8</button>
+                        <button class="btn-preset" data-index="8">Preset 9</button>
+                        <button class="btn-preset" data-index="9">Preset 10</button>
+                    </div>
+                </div>
+
+                <!-- H Serisi Preset Detay Sayfası -->
+                <div id="control-detail-presets" class="control-subpage" style="display:none;">
+                    <button id="btnBackFromHPresets" class="btn-back">⬅ Geri</button>
+                    <div class="header-section">
+                        <h2>Presets</h2>
+                        <p>Cihazdan presetler yükleniyor...</p>
+                    </div>
+                    <div id="hPresetList" class="preset-grid">
+                        <!-- Dinamik olarak doldurulur -->
+                        <div class="preset-loading">⏳ Presetler getiriliyor...</div>
+                    </div>
+                </div>
+
+                <!-- TU: Aktif Kaynak Detay Sayfası -->
+                <div id="control-detail-hdmisource" class="control-subpage">
+                    <button id="btnBackFromHdmiSource" class="btn-back">&#x2b05; Geri</button>
+                    <div class="header-section">
+                        <h2>Aktif Kaynak</h2>
+                        <p>Aşağıdan kaynak seçebilirsiniz.</p>
+                    </div>
+                    <div class="source-grid">
+                        <button class="btn-source" data-source="1">
+                            <span class="source-icon">&#x1f4fa;</span>
+                            <span class="source-label">HDMI 1</span>
+                        </button>
+                        <button class="btn-source" data-source="2">
+                            <span class="source-icon">&#x1f4fa;</span>
+                            <span class="source-label">HDMI 2</span>
+                        </button>
+                        <button class="btn-source" data-source="3">
+                            <span class="source-icon">&#x1f4fa;</span>
+                            <span class="source-label">HDMI 3</span>
+                        </button>
+                        <button class="btn-source" data-source="0">
+                            <span class="source-icon">&#x1f4f1;</span>
+                            <span class="source-label">Android</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TU: G&#xfc;&#xe7; Kontrol Detay Sayfas&#x131; -->
+                <div id="control-detail-power" class="control-subpage">
+                    <button id="btnBackFromPower" class="btn-back">&#x2b05; Geri</button>
+                    <div class="header-section">
+                        <h2>G&#xfc;&#xe7; Kontrol&#xfc;</h2>
+                        <p>Cihaz&#x131;n g&#xfc;&#xe7; durumunu y&#xf6;netin.</p>
+                    </div>
+                    <div class="source-grid">
+                        <button class="btn-source" id="btnStandby">
+                            <span class="source-icon">&#x1f319;</span>
+                            <span class="source-label">Bekleme</span>
+                        </button>
+                        <button class="btn-source" id="btnWakeup">
+                            <span class="source-icon">&#x2600;&#xfe0f;</span>
+                            <span class="source-label">Uyan&#x131;r</span>
+                        </button>
+                        <button class="btn-source warning-card" id="btnPowerOff">
+                            <span class="source-icon">&#x23fb;</span>
+                            <span class="source-label">Kapat</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TU: Ses Kontrolü Detay Sayfası -->
+                <div id="control-detail-volume" class="control-subpage">
+                    <button id="btnBackFromVolume" class="btn-back">&#x2b05; Geri</button>
+                    <div class="header-section">
+                        <h2>Ses Kontrolü</h2>
+                        <p>Ses seviyesini ayarlayınız.</p>
+                    </div>
+                    <div class="detail-card">
+                        <div id="volumeValue" class="value-display">0</div>
+                        <input type="range" id="volumeSlider" min="0" max="100" value="0" class="slider-large">
+                        <div class="slider-info">
+                            <span>0</span>
+                            <span>100</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TU: Uzaktan Kumanda Detay Sayfas&#x131; -->
+                <div id="control-detail-remote" class="control-subpage">
+                    <button id="btnBackFromRemote" class="btn-back">&#x2b05; Geri</button>
+                    <div class="header-section">
+                        <h2>Uzaktan Kumanda</h2>
+                        <p>Cihaz&#x131; y&#xf6;netmek i&#xe7;in tu&#x15f;lara dokunun.</p>
+                    </div>
+
+                    <!-- &#xdc;st Sat&#x131;r: Home / Back / Menu -->
+                    <div class="remote-top-row">
+                        <button class="btn-rmt" data-key="home">
+                            <span class="rmt-icon">&#x2302;</span>
+                            <span class="rmt-label">Ana Sayfa</span>
+                        </button>
+                        <button class="btn-rmt" data-key="back">
+                            <span class="rmt-icon">&#x21b5;</span>
+                            <span class="rmt-label">Geri</span>
+                        </button>
+                        <button class="btn-rmt" data-key="menu">
+                            <span class="rmt-icon">&#x2630;</span>
+                            <span class="rmt-label">Men&#xfc;</span>
+                        </button>
+                    </div>
+
+                    <!-- D-Pad + Yan Tu&#x15f;lar -->
+                    <div class="remote-dpad-row">
+
+                        <!-- Sol: Vol +/- -->
+                        <div class="remote-side-col">
+                            <button class="btn-rmt" data-key="volup">
+                                <span class="rmt-icon">&#x1f50a;</span>
+                                <span class="rmt-label">Vol+</span>
+                            </button>
+                            <button class="btn-rmt" data-key="voldown">
+                                <span class="rmt-icon">&#x1f508;</span>
+                                <span class="rmt-label">Vol&#x2212;</span>
+                            </button>
+                        </div>
+
+                        <!-- Orta: D-Pad -->
+                        <div class="remote-dpad">
+                            <button class="btn-dpad btn-dpad-up" data-key="up">&#x25b2;</button>
+                            <div class="dpad-middle">
+                                <button class="btn-dpad btn-dpad-left" data-key="left">&#x25c4;</button>
+                                <button class="btn-dpad btn-dpad-ok" data-key="ok">OK</button>
+                                <button class="btn-dpad btn-dpad-right" data-key="right">&#x25ba;</button>
+                            </div>
+                            <button class="btn-dpad btn-dpad-down" data-key="down">&#x25bc;</button>
+                        </div>
+
+                        <!-- Sa&#x11f;: Power + Source -->
+                        <div class="remote-side-col">
+                            <button class="btn-rmt warning-rmt" data-key="power">
+                                <span class="rmt-icon">&#x23fb;</span>
+                                <span class="rmt-label">G&#xfc;&#xe7;</span>
+                            </button>
+                            <button class="btn-rmt" data-key="source">
+                                <span class="rmt-icon">&#x1f4fa;</span>
+                                <span class="rmt-label">Kaynak</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Sayfa 3: Cihaz Bilgileri -->
+            <div id="page-device" class="page">
+                <div class="header-section">
+                    <h2>Cihaz Bilgileri</h2>
+                    <p id="devicePageSubtitle">Bağlı cihazın teknik detayları ve durumu.</p>
+                </div>
+
+                <!-- Bağlı Cihaz Yok Durumu -->
+                <div id="deviceEmpty" class="empty-state" style="display:none;">Henüz bir cihaza bağlanılmadı.</div>
+
+                <!-- VX Serisi Cihaz Paneli -->
+                <div class="device-detail-container" id="vxDevicePanel">
+                    <!-- Cihaz Görsel Kartı -->
+                    <div class="device-main-card">
+                        <div class="device-image-wrapper">
+                            <img src="" id="deviceImgVx" alt="VXPro" style="width: 100%; object-fit: contain;">
+                        </div>
+                        <div class="device-text-info">
+                            <h3 id="infoDeviceName">NovaStar VXPro</h3>
+                            <div class="info-row">
+                                <span class="label">IP Adresi:</span>
+                                <span class="value" id="infoDeviceIp">---.---.---.---</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Durum:</span>
+                                <span id="infoDeviceStatus" class="status-badge disconnected">Bağlı Değil</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fan Durum Kartı -->
+                    <div class="fan-status-card" id="btnRefreshFan">
+                        <div class="card-header">
+                            <span class="icon">🌀</span>
+                            <h3>Fan Durumu</h3>
+                            <button class="btn-refresh-mini">🔄</button>
+                        </div>
+                        <div id="fanList" class="fan-list">
+                            <div class="fan-item-placeholder">Bilgi almak için dokunun veya cihazı bağlayın.</div>
+                        </div>
+                    </div>
+
+                    <!-- Ethernet Port Giriş Kartı (deaktif) -->
+                    <div class="control-entry-card" id="cardEthernet" style="display:none;">
+                        <span class="icon">🔌</span>
+                        <span class="label">Ethernet Port Durumu</span>
+                        <span class="chevron">˃</span>
+                    </div>
+
+                    <!-- Restart Kartı -->
+                    <div class="control-entry-card warning-card" id="cardRestart">
+                        <span class="icon">🔄</span>
+                        <span class="label">Cihazı Yeniden Başlat</span>
+                        <span class="chevron">˃</span>
+                    </div>
+                </div>
+
+                <!-- TU Serisi Cihaz Paneli -->
+                <div class="device-detail-container" id="tuDevicePanel" style="display:none;">
+                    <div class="device-main-card">
+                        <div class="device-image-wrapper">
+                            <img src="" id="deviceImgTu" alt="TU Series" style="width: 100%; object-fit: contain;">
+                        </div>
+                        <div class="device-text-info">
+                            <h3 id="tuInfoDeviceName">NovaStar TU Series</h3>
+                            <div class="info-row">
+                                <span class="label">IP Adresi:</span>
+                                <span class="value" id="tuInfoDeviceIp">---.---.---.---</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Durum:</span>
+                                <span id="tuInfoDeviceStatus" class="status-badge disconnected">Bağlı Değil</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TU Durum Dashboard -->
+                    <div class="tu-status-dashboard" id="tuStatusDashboard" style="display:none;">
+                        <div class="dashboard-header">
+                            <h3>Sistem Durumu</h3>
+                            <button id="btnRefreshTu" class="btn-refresh-mini">🔄</button>
+                        </div>
+
+                        <div class="tu-status-grid">
+                            <!-- Parlaklık -->
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">☀️</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Parlaklık</div>
+                                    <div class="tu-s-val" id="valTuBrightness">---</div>
+                                </div>
+                            </div>
+                            <!-- Voltaj -->
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">⚡</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Voltaj</div>
+                                    <div class="tu-s-val" id="valTuVoltage">---</div>
+                                </div>
+                            </div>
+                            <!-- Sıcaklık -->
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">🌡️</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Sıcaklık</div>
+                                    <div class="tu-s-val" id="valTuTemp">---</div>
+                                </div>
+                            </div>
+                            <!-- Hotspot -->
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">📻</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Hotspot</div>
+                                    <div class="tu-s-val" id="valTuHotspot">---</div>
+                                </div>
+                            </div>
+                            <!-- LAN -->
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">🔌</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Kablolu Ağ (LAN)</div>
+                                    <div class="tu-s-val" id="valTuLan">---</div>
+                                </div>
+                            </div>
+                            <!-- Aktif Kaynak -->
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">📺</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Aktif Kaynak</div>
+                                    <div class="tu-s-val" id="valTuSource">---</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ethernet Port Link Durumu -->
+                        <div class="tu-link-status-section">
+                            <h4>Ethernet Port Bağlantı Durumu</h4>
+                            <div class="tu-port-grid" id="tuPortGrid">
+                                <!-- Port dots will be rendered by JS -->
+                            </div>
+                        </div>
+
+                        <!-- HDMI Kaynakları -->
+                        <div class="tu-hdmi-sources">
+                            <h4>HDMI Bağlantıları</h4>
+                            <div class="hdmi-badges">
+                                <span class="hdmi-badge" id="badgeHdmi1">HDMI 1</span>
+                                <span class="hdmi-badge" id="badgeHdmi2">HDMI 2</span>
+                                <span class="hdmi-badge" id="badgeHdmi3">HDMI 3</span>
+                                <span class="hdmi-badge" id="badgeAndroid">Android</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TU Restart Kartı -->
+                    <div class="control-entry-card warning-card" id="tuCardRestart">
+                        <span class="icon">🔄</span>
+                        <span class="label">Cihazı Yeniden Başlat</span>
+                        <span class="chevron">˃</span>
+                    </div>
+                </div>
+
+                <!-- H Series Device Dashboard -->
+                <div id="h-device-panel" class="device-detail-container" style="display: none;">
+                    <!-- Cihaz Görsel Kartı -->
+                    <div class="device-main-card">
+                        <div class="device-image-wrapper">
+                            <img id="deviceImgH" src="" alt="H Series" style="width: 100%; max-height: 160px; object-fit: contain;">
+                        </div>
+                        <div class="device-text-info">
+                            <h3 id="hInfoDeviceName">NovaStar H Series</h3>
+                            <div class="info-row">
+                                <span class="label">IP Adresi:</span>
+                                <span class="value" id="hInfoDeviceIp">---.---.---.---</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Durum:</span>
+                                <span id="hInfoDeviceStatus" class="status-badge disconnected">Bağlı Değil</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aksiyon Butonları -->
+                    <div style="margin:8px 0;">
+                        <button id="btnRefreshHDetails" class="btn-refresh-h">
+                            <span>🔄</span> Cihaz Bilgilerini Al
+                        </button>
+                    </div>
+
+                    <!-- Detay Grid -->
+                    <div class="tu-status-dashboard" id="hStatusDashboard" style="display:none;">
+                        <div class="dashboard-header">
+                            <h3>Cihaz Detayları</h3>
+                        </div>
+                        <div class="tu-status-grid">
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">📛</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Cihaz Adı</div>
+                                    <div class="tu-s-val" id="valHName">---</div>
+                                </div>
+                            </div>
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">🔢</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Model ID</div>
+                                    <div class="tu-s-val" id="valHModelId">---</div>
+                                </div>
+                            </div>
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">🌐</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">MAC Adresi</div>
+                                    <div class="tu-s-val" id="valHMac">---</div>
+                                </div>
+                            </div>
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">🔌</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Ağ (IP / Subnet)</div>
+                                    <div class="tu-s-val" id="valHNetwork">---</div>
+                                </div>
+                            </div>
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">🌡️</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Sıcaklık</div>
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <div class="tu-s-val" id="valHTemp">---</div>
+                                        <span id="valHTempStatus" class="h-status-badge" style="display:none;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tu-status-item">
+                                <span class="tu-s-icon">⚡</span>
+                                <div class="tu-s-text">
+                                    <div class="tu-s-label">Voltaj</div>
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <div class="tu-s-val" id="valHVolt">---</div>
+                                        <span id="valHVoltStatus" class="h-status-badge" style="display:none;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fan Durumu -->
+                        <div class="fan-status-card" style="margin-top:12px;">
+                            <div class="card-header">
+                                <span class="icon">🌀</span>
+                                <h3>Fan Durumu</h3>
+                            </div>
+                            <div id="hFanList" class="fan-list">
+                                <div class="fan-item-placeholder">Bilgi almak için "Cihaz Bilgilerini Al" tuşuna basın.</div>
+                            </div>
+                        </div>
+                        <!-- Yeniden Başlat Butonu (Alt) -->
+                        <button id="btnRestartH" class="btn-restart-h" style="width:100%; margin-top:12px;">
+                            <span>🔁</span> Cihazı Yeniden Başlat
+                        </button>
+                    </div>
+                </div>
+
+
+            </div>
+
+            <!-- Ethernet Port Detay Sayfası (deaktif) -->
+            <div id="control-detail-ethernet" class="control-subpage" style="display:none !important;">
+                <button id="btnBackToControlFromEthernet" class="btn-back">⬅ Geri</button>
+                <div class="header-section">
+                    <h2>Ethernet Port Durumu</h2>
+                    <p>Portların Asıl (Primary) veya Yedek (Backup) durumlarını izleyin.</p>
+                </div>
+
+                <div class="port-grid-container">
+                    <div id="portList" class="port-grid">
+                        <!-- Portlar main.js ile doldurulacak -->
+                    </div>
+                </div>
+
+                <div class="port-legend">
+                    <div class="legend-item"><span class="dot primary"></span> Asıl (Primary)</div>
+                    <div class="legend-item"><span class="dot backup"></span> Yedek (Backup)</div>
+                </div>
+            </div>
+        </main>
+
+        <nav class="bottom-nav">
+            <button class="nav-item focus-discovery" data-page="discovery">
+                <span class="icon">🔍</span>
+                <span class="label">Tarama</span>
+            </button>
+            <button class="nav-item focus-control" data-page="control">
+                <span class="icon">🎛️</span>
+                <span class="label">Kontrol</span>
+            </button>
+            <button class="nav-item focus-device" data-page="device">
+                <span class="icon">📱</span>
+                <span class="label">Cihaz</span>
+            </button>
+        </nav>
+
+        <div id="toastContainer"></div>
+    </div>
+    <script type="module" src="./main.js"></script>
+</body>
+
+</html>

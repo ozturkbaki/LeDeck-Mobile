@@ -1,0 +1,175 @@
+/**
+ * VXPro UDP Discovery Service
+ * Port: 5600
+ * Protocol: UDP Broadcast
+ */
+import { UdpSocket } from 'capacitor-udp-socket';
+
+export const DiscoveryService = {
+    _socketId: null,
+    _isScanning: false,
+
+    /**
+     * Start scanning for VXPro devices on the network
+     * @param {Function} onDeviceFound Callback when a device is discovered
+     * @param {string} [targetAddress] Optional specific IP to scan (e.g., '192.168.1.5')
+     */
+    async scan(onDeviceFound, targetAddress = null) {
+        if (this._isScanning) return;
+        this._isScanning = true;
+
+        try {
+            console.log('[Discovery] Creating socket...');
+            if (!UdpSocket) throw new Error('UdpSocket plugin not found');
+
+            // 1. Create Socket
+            const createResult = await UdpSocket.create({ properties: {} });
+            this._socketId = createResult.socketId;
+
+            // 2. Bind
+            await UdpSocket.bind({ socketId: this._socketId, port: 0 });
+
+            // 3. Set Broadcast
+            try {
+                if (UdpSocket.setBroadcast) {
+                    await UdpSocket.setBroadcast({ socketId: this._socketId, enabled: true });
+                }
+            } catch (e) { }
+
+            // 4. Listen for Responses
+            UdpSocket.addListener('receive', (info) => {
+                console.log(`[Discovery] Data received from ${info.remoteAddress}:${info.remotePort}`);
+                if (info.socketId !== this._socketId) return;
+                this._handleResponse(info, onDeviceFound);
+            });
+
+            // 5. Send Discovery Payloads
+            const payloads = this._buildSearchPayloads();
+            const ports = [5600, 5201];
+            const addresses = ['255.255.255.255', '192.168.5.255', '192.168.41.1', '192.168.1.255', '192.168.0.255'];
+
+            for (const payload of payloads) {
+                const bufferBase64 = btoa(String.fromCharCode(...payload));
+                for (const port of ports) {
+                    if (targetAddress) {
+                        console.log(`[Discovery] Probing ${targetAddress}:${port} with payload type ${payload[2]}`);
+                        await UdpSocket.send({
+                            socketId: this._socketId, address: targetAddress, port: port, buffer: bufferBase64
+                        });
+                    } else {
+                        for (const addr of addresses) {
+                            try {
+                                await UdpSocket.send({
+                                    socketId: this._socketId, address: addr, port: port, buffer: bufferBase64
+                                });
+                                await new Promise(r => setTimeout(r, 10)); // Delay between packets
+                            } catch (e) { }
+                        }
+                    }
+                    await new Promise(r => setTimeout(r, 50)); // Delay between ports
+                }
+            }
+            console.log('[Discovery] All search packets sent.');
+
+            // Keep scanning for 5 seconds
+            setTimeout(async () => {
+                await this.stop();
+            }, 5000);
+
+        } catch (err) {
+            console.error('[Discovery] Scan Error Detail:', err);
+            this._isScanning = false;
+            throw err;
+        }
+    },
+
+    async stop() {
+        if (this._socketId) {
+            try {
+                console.log('[Discovery] Stopping and closing socket...');
+                await UdpSocket.close({ socketId: this._socketId });
+                UdpSocket.removeAllListeners();
+            } catch (e) { }
+            this._socketId = null;
+        }
+        this._isScanning = false;
+    },
+
+    _handleResponse(info, callback) {
+        try {
+            // Binary data to String
+            const binaryString = atob(info.buffer);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            // DEBUG LOG: Show raw hex for the first 16 bytes
+            let hexOut = '';
+            for (let i = 0; i < Math.min(bytes.length, 16); i++) {
+                hexOut += bytes[i].toString(16).padStart(2, '0') + ' ';
+            }
+            console.log(`[Discovery] Data from ${info.remoteAddress}:${info.remotePort} | Length: ${bytes.length} | Hex: ${hexOut}`);
+
+            // 1. Detect device type by Header
+            // TU Series uses AA 55 header
+            if (bytes[0] === 0xAA && bytes[1] === 0x55) {
+                console.log('[Discovery] TU Series device confirmed via AA 55.');
+                const tuDevice = {
+                    ip: info.remoteAddress,
+                    port: 5201,
+                    SN: 'TU-' + info.remoteAddress.split('.').pop(),
+                    deviceName: 'TU Series Device',
+                    isVerified: true,
+                    type: 'TU'
+                };
+                if (callback) callback(tuDevice);
+                return;
+            }
+
+            // VXPro uses 55 AA header and has JSON at offset 40
+            if (bytes[0] === 0x55 && bytes[1] === 0xAA) {
+                if (bytes.length < 40) return;
+
+                try {
+                    const jsonPart = new TextDecoder().decode(bytes.slice(40));
+                    const deviceData = JSON.parse(jsonPart);
+                    deviceData.ip = info.remoteAddress;
+                    deviceData.port = 5600;
+                    deviceData.type = 'VX';
+                    if (callback) callback(deviceData);
+                } catch (jsonErr) {
+                    console.log('[Discovery] VX Header found but JSON failed. Potential raw response.');
+                }
+            }
+
+        } catch (e) {
+            console.error('[Discovery] Decode Error:', e);
+        }
+    },
+
+    _buildSearchPayloads() {
+        // Payload 1: Standard Search (Corrected Checksum 64 56)
+        const p1 = new Uint8Array([
+            0x55, 0xaa, 0x00, 0x10, 0xfe, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x64, 0x56
+        ]);
+
+        // Payload 2: Broad Probe (Corrected Checksum 57 56)
+        const p2 = new Uint8Array([
+            0x55, 0xaa, 0x00, 0x00, 0xfe, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+            0x02, 0x00, 0x57, 0x56
+        ]);
+
+        // Payload 3: Identify (Checksum 57 57)
+        const p3 = new Uint8Array([
+            0x55, 0xaa, 0x00, 0x00, 0xfe, 0xff, 0x01, 0x00,
+            0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x57, 0x57
+        ]);
+
+        return [p1, p2, p3];
+    }
+};

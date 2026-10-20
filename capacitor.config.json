@@ -1,0 +1,8 @@
+{
+    "appId": "com.ledeca.mobile2",
+    "appName": "LeDeck Mobile",
+    "webDir": "dist",
+    "server": {
+        "androidScheme": "https"
+    }
+}
